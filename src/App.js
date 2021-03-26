@@ -1,6 +1,46 @@
 import { useEffect, useState } from "react";
 import { getLiveData } from "./api/ddareung";
 import { geocoding, reverseGeocoding } from "./api/navermaps";
+import { RenderAfterNavermapsLoaded, NaverMap, Marker } from "react-naver-maps";
+
+function NaverMapWithMarkers({ liveData, currentPos }) {
+  const navermaps = window.naver.maps;
+  return (
+    <NaverMap
+      mapDivId={"maps-getting-started-uncontrolled"}
+      style={{
+        width: "100%",
+        height: "100vh",
+      }}
+      defaultCenter={{
+        lng: currentPos.length !== 0 ? currentPos[0] : 126.988205,
+        lat: currentPos.length !== 0 ? currentPos[1] : 37.551229,
+      }}
+      defaultZoom={14}
+    >
+      {liveData.length !== 0 &&
+        liveData.map(stop => {
+          const {
+            stationId,
+            stationName,
+            parkingBikeTotCnt,
+            stationLatitude: lat,
+            stationLongitude: lng,
+          } = stop;
+          return (
+            <Marker
+              key={stationId}
+              position={new navermaps.LatLng(lat, lng)}
+              animation={2}
+              onClick={() => {
+                alert(`${stationName} / ${parkingBikeTotCnt}대 남음`);
+              }}
+            />
+          );
+        })}
+    </NaverMap>
+  );
+}
 
 function App() {
   // initialize liveData, starting point, destination
@@ -65,7 +105,7 @@ function App() {
 
   return (
     <div>
-      <form onSubmit={handleSubmit}>
+      <form className="searchBox" onSubmit={handleSubmit}>
         <button onClick={handleCurrentPositionClick}>현재 위치 가져오기</button>
         <input
           className="starting"
@@ -85,15 +125,13 @@ function App() {
         />
         <button type="submit">찾기</button>
       </form>
-      {liveData.length !== 0 &&
-        liveData.map(stop => {
-          const { stationId, stationName, parkingBikeTotCnt } = stop;
-          return (
-            <div key={stationId}>
-              {stationName} / {parkingBikeTotCnt}대 남음
-            </div>
-          );
-        })}
+      <RenderAfterNavermapsLoaded
+        ncpClientId={process.env.REACT_APP_NCP_CLIENT_ID}
+        error={<p>Maps Load Error</p>}
+        loading={<p>Maps Loading...</p>}
+      >
+        <NaverMapWithMarkers liveData={liveData} currentPos={currentPos} />
+      </RenderAfterNavermapsLoaded>
     </div>
   );
 }
