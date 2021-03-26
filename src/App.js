@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { getLiveData } from "./api/ddareung";
-import { geocoding } from "./api/navermaps";
+import { geocoding, reverseGeocoding } from "./api/navermaps";
 
 function App() {
   // initialize liveData, starting point, destination
   const [liveData, setLiveData] = useState([]);
   const [starting, setStarting] = useState("");
   const [destination, setDestination] = useState("");
+  const [currentPos, setCurrentPos] = useState([]);
 
   const handleStartingChange = e => {
     setStarting(e.target.value);
@@ -24,10 +25,22 @@ function App() {
     );
   };
 
+  const handleCurrentPositionClick = async e => {
+    e.preventDefault();
+    navigator.geolocation.getCurrentPosition(position => {
+      setCurrentPos([position.coords.longitude, position.coords.latitude]);
+    });
+  };
+
   const getGeocode = async address => {
     // TODO: check address
     const coord = await geocoding(address);
     return coord;
+  };
+
+  const getAddress = async coord => {
+    const address = await reverseGeocoding(coord);
+    return address;
   };
 
   // fetch initialData from ddareung api
@@ -39,9 +52,21 @@ function App() {
     fetchLiveData();
   }, []);
 
+  // if currentPos changes, set starting with reverse geocoded address
+  useEffect(() => {
+    async function setStartingWithCurrentPos() {
+      if (currentPos.length !== 0) {
+        const address = await getAddress(currentPos);
+        setStarting(address);
+      }
+    }
+    setStartingWithCurrentPos();
+  }, [currentPos]);
+
   return (
     <div>
       <form onSubmit={handleSubmit}>
+        <button onClick={handleCurrentPositionClick}>현재 위치 가져오기</button>
         <input
           className="starting"
           placeholder="출발지를 입력해주세요..."
