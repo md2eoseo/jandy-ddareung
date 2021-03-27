@@ -3,30 +3,22 @@ import { getLiveData } from "./api/ddareung";
 import { geocoding, reverseGeocoding } from "./api/navermaps";
 import { RenderAfterNavermapsLoaded, NaverMap, Marker } from "react-naver-maps";
 
-function NaverMapWithMarkers({ liveData, currentPos }) {
+const defaultPos = [126.988205, 37.551229];
+
+const NaverMapWithMarkers = ({ liveData, currentPos }) => {
   const navermaps = window.naver.maps;
+  const mapOptions = {
+    center: {
+      lng: currentPos[0],
+      lat: currentPos[1],
+    },
+    zoom: 14,
+  };
   return (
-    <NaverMap
-      mapDivId={"maps-getting-started-uncontrolled"}
-      style={{
-        width: "100%",
-        height: "100vh",
-      }}
-      defaultCenter={{
-        lng: currentPos.length !== 0 ? currentPos[0] : 126.988205,
-        lat: currentPos.length !== 0 ? currentPos[1] : 37.551229,
-      }}
-      defaultZoom={14}
-    >
+    <NaverMap id="map" {...mapOptions}>
       {liveData.length !== 0 &&
         liveData.map(stop => {
-          const {
-            stationId,
-            stationName,
-            parkingBikeTotCnt,
-            stationLatitude: lat,
-            stationLongitude: lng,
-          } = stop;
+          const { stationId, stationName, parkingBikeTotCnt, stationLatitude: lat, stationLongitude: lng } = stop;
           return (
             <Marker
               key={stationId}
@@ -40,14 +32,14 @@ function NaverMapWithMarkers({ liveData, currentPos }) {
         })}
     </NaverMap>
   );
-}
+};
 
 function App() {
   // initialize liveData, starting point, destination
   const [liveData, setLiveData] = useState([]);
   const [starting, setStarting] = useState("");
   const [destination, setDestination] = useState("");
-  const [currentPos, setCurrentPos] = useState([]);
+  const [currentPos, setCurrentPos] = useState(defaultPos);
 
   const handleStartingChange = e => {
     setStarting(e.target.value);
@@ -60,9 +52,7 @@ function App() {
     e.preventDefault();
     const startingGeocode = await getGeocode(starting);
     const destinationGeocode = await getGeocode(destination);
-    console.log(
-      `출발지 좌표: ${startingGeocode} \n목적지 좌표: ${destinationGeocode}`
-    );
+    console.log(`출발지 좌표: ${startingGeocode} \n목적지 좌표: ${destinationGeocode}`);
   };
 
   const handleCurrentPositionClick = async e => {
@@ -95,7 +85,7 @@ function App() {
   // if currentPos changes, set starting with reverse geocoded address
   useEffect(() => {
     async function setStartingWithCurrentPos() {
-      if (currentPos.length !== 0) {
+      if (currentPos !== defaultPos) {
         const address = await getAddress(currentPos);
         setStarting(address);
       }
