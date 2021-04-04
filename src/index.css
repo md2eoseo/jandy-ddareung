@@ -13,6 +13,13 @@ code {
 .searchBox {
   position: absolute;
   z-index: 1;
+  display: flex;
+}
+
+.currentPosBtn {
+}
+
+.searchForm {
 }
 
 #map {

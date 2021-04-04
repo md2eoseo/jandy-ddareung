@@ -2,6 +2,7 @@ import axios from "axios";
 
 const geocodingUrl = "/api/map-geocode/v2/geocode";
 const reverseGeocodingUrl = "/api/map-reversegeocode/v2/gc";
+const noPos = [-1, -1];
 
 export async function geocoding(query) {
   const coord = await axios
@@ -20,12 +21,12 @@ export async function geocoding(query) {
     })
     .then(data => {
       if (data.addresses.length > 1) {
-        console.log(`${query}에는 여러 주소가 있어요.`);
+        console.log(`"${query}"에는 여러 주소가 있어요.`);
       } else if (data.addresses.length === 0) {
-        console.log(`${query}에 해당되는 좌표가 없어요.`);
-        return [-1, -1];
+        console.log(`"${query}"에 해당되는 좌표가 없어요.`);
+        return noPos;
       }
-      return [data.addresses[0].x, data.addresses[0].y];
+      return [Number(data.addresses[0].x), Number(data.addresses[0].y)];
     });
 
   return coord;
