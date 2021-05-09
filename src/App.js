@@ -3,97 +3,126 @@ import { getLiveData } from './api/ddareung';
 import { geocoding, reverseGeocoding } from './api/navermaps';
 import { RenderAfterNavermapsLoaded, NaverMap, Marker } from 'react-naver-maps';
 import { useForm } from 'react-hook-form';
+import CurrentPositionIcon from './img/ic_my_location_48px.svg';
+import SwapIcon from './img/ic_swap_horiz_48px.svg';
+import SearchIcon from './img/ic_search_48px.svg';
+import StartIcon from './img/ic_android_48px.svg';
+import DestIcon from './img/ic_golf_course_48px.svg';
+import StopIcon from './img/ic_directions_bike_24px.svg';
+import StopLittleBitIcon from './img/alert-triangle.svg';
+import StopNotAvailableIcon from './img/ic_not_interested_24px.svg';
 
-const defaultPos = [126.988205, 37.551229];
-const noPos = [-1, -1];
+const defaultCoord = { lng: 126.988205, lat: 37.551229 };
+const noCoord = { lng: -1, lat: -1 };
 
-function NaverMapWithMarkers({ liveData, currentPos, routeCenterPos, directRouteDistance, setLoadingCurrentPos }) {
+function NaverMapWithMarkers({ liveData, currentCoord, startCoord, destCoord, routeCenterCoord, directRouteDistance }) {
   const navermaps = window.naver.maps;
+  const [info, setInfo] = useState('');
   const [mapOptions, setMapOptions] = useState({
     center: {
-      lng: currentPos[0],
-      lat: currentPos[1],
+      lng: currentCoord.lng,
+      lat: currentCoord.lat,
     },
     zoom: 14,
   });
 
-  useEffect(() => {
-    setLoadingCurrentPos(false);
-    if (currentPos !== noPos) {
-      setMapOptions({
-        center: {
-          lng: currentPos[0],
-          lat: currentPos[1],
-        },
-        zoom: 14,
-      });
-    }
-  }, [currentPos]);
+  const infoRef = useRef();
+  const tsRef = useRef();
 
   useEffect(() => {
-    if (routeCenterPos !== noPos) {
+    setMapOptions({
+      center: {
+        lng: currentCoord.lng,
+        lat: currentCoord.lat,
+      },
+      zoom: 16,
+    });
+  }, [currentCoord]);
+
+  useEffect(() => {
+    if (routeCenterCoord !== undefined) {
       // TODO: directRouteDistance를 사용해서 zoom 조절하기
       setMapOptions({
         center: {
-          lng: routeCenterPos[0],
-          lat: routeCenterPos[1],
+          lng: routeCenterCoord.lng,
+          lat: routeCenterCoord.lat,
         },
         zoom: 14,
       });
     }
-  }, [routeCenterPos]);
+  }, [routeCenterCoord]);
+
+  const whichIcon = count => (count === 0 ? StopNotAvailableIcon : count < 3 ? StopLittleBitIcon : StopIcon);
+
+  const onStopClick = (stationName, parkingBikeTotCnt) => {
+    setInfo(`${stationName} / ${parkingBikeTotCnt}대 남음`);
+    if (infoRef.current.classList.contains('show')) {
+      clearTimeout(tsRef.current);
+    }
+    infoRef.current.classList.add('show');
+    tsRef.current = setTimeout(() => {
+      infoRef.current.classList.remove('show');
+    }, 3000);
+  };
 
   return (
-    <NaverMap id="map" {...mapOptions}>
-      {liveData.length !== 0 &&
-        liveData.map(stop => {
-          const { stationId, stationName, parkingBikeTotCnt, stationLatitude: lat, stationLongitude: lng } = stop;
-          return (
-            <Marker
-              key={stationId}
-              position={new navermaps.LatLng(lat, lng)}
-              animation={2}
-              onClick={() => {
-                alert(`${stationName} / ${parkingBikeTotCnt}대 남음`);
-              }}
-            />
-          );
-        })}
-    </NaverMap>
+    <>
+      <NaverMap id="map" {...mapOptions}>
+        {liveData.length !== 0 &&
+          liveData.map(stop => {
+            const { stationId, stationName, parkingBikeTotCnt, stationLatitude: lat, stationLongitude: lng } = stop;
+            return (
+              <Marker
+                key={stationId}
+                position={new navermaps.LatLng(lat, lng)}
+                icon={whichIcon(Number(parkingBikeTotCnt))}
+                onClick={() => {
+                  onStopClick(stationName, parkingBikeTotCnt);
+                }}
+              />
+            );
+          })}
+        {startCoord && <Marker position={new navermaps.LatLng(startCoord.lat, startCoord.lng)} icon={StartIcon} />}
+        {destCoord && <Marker position={new navermaps.LatLng(destCoord.lat, destCoord.lng)} icon={DestIcon} />}
+      </NaverMap>
+      <div className="infoBox" ref={infoRef}>
+        {info}
+      </div>
+    </>
   );
 }
 
 function App() {
   // initialize liveData, starting point, destination
   const [liveData, setLiveData] = useState([]);
-  const [currentPos, setCurrentPos] = useState(defaultPos);
+  const [currentCoord, setCurrentCoord] = useState(defaultCoord);
   const [loadingCurrentPos, setLoadingCurrentPos] = useState(false);
-  const [routeCenterPos, setRouteCenterPos] = useState(noPos);
+  const [routeCenterCoord, setRouteCenterCoord] = useState();
   const [directRouteDistance, setDirectRouteDistance] = useState(0);
-  const [startPos, setStartPos] = useState(noPos);
-  const [destPos, setDestPos] = useState(noPos);
+  const [startCoord, setStartCoord] = useState();
+  const [destCoord, setDestCoord] = useState();
 
   const startingRef = useRef(null);
   const destinationRef = useRef(null);
 
-  const { register, handleSubmit } = useForm();
-  const { ref: startingHookRef, ...startingRest } = register('starting');
-  const { ref: destinationHookRef, ...destinationRest } = register('destination');
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    getValues,
+    setValue,
+  } = useForm();
+  const { ref: startingHookRef, ...startingRest } = register('starting', { required: '출발지를 입력해주세요.' });
+  const { ref: destinationHookRef, ...destinationRest } = register('destination', { required: '목적지를 입력해주세요.' });
 
-  const getCoord = address => geocoding(address);
-  const getAddress = coord => reverseGeocoding(coord);
-  const getRouteCenterCoord = (startingCoord, destinationCoord) => [
-    (startingCoord[0] + destinationCoord[0]) / 2,
-    (startingCoord[1] + destinationCoord[1]) / 2,
-  ];
-  const getDirectRouteDistance = (startingCoord, destinationCoord) =>
-    Math.sqrt((startingCoord[0] - destinationCoord[0]) ** 2 + (startingCoord[1] - destinationCoord[1]) ** 2);
-
-  const handleCurrentPositionClick = () => {
+  const onCurrentPosClick = () => {
     setLoadingCurrentPos(true);
     navigator.geolocation.getCurrentPosition(
       position => {
-        setCurrentPos([Number(position.coords.longitude), Number(position.coords.latitude)]);
+        const coord = { lng: Number(position.coords.longitude), lat: Number(position.coords.latitude) };
+        setCurrentCoord(coord);
+        setStartCoord(coord);
+        setLoadingCurrentPos(false);
       },
       () => {
         alert('현위치를 불러올 수 없습니다.');
@@ -102,37 +131,68 @@ function App() {
     );
   };
 
-  const onSubmit = async ({ starting, destination }) => {
-    if (starting === '') {
-      alert('출발지를 입력해주세요.');
+  const swapAddress = () => {
+    const { starting, destination } = getValues();
+    setValue('starting', destination);
+    setValue('destination', starting);
+  };
+
+  const getCoord = address => geocoding(address);
+  const getAddress = coord => reverseGeocoding(coord);
+  const getRouteCenterCoord = (startingCoord, destinationCoord) => ({
+    lat: (startingCoord.lat + destinationCoord.lat) / 2,
+    lng: (startingCoord.lng + destinationCoord.lng) / 2,
+  });
+  const getDirectRouteDistance = (startingCoord, destinationCoord) =>
+    Math.sqrt((startingCoord.lat - destinationCoord.lat) ** 2 + (startingCoord.lng - destinationCoord.lng) ** 2);
+
+  const validateForm = (starting, destination) => {
+    if (starting.trim() === '') {
+      alert('출발지를 다시 입력해주세요.');
+      setValue('starting', starting.trim());
       startingRef.current.focus();
-    } else if (destination === '') {
-      alert('목적지를 입력해주세요.');
-      destinationRef.current.focus();
-    } else {
-      const startingCoord = await getCoord(starting);
-      const destinationCoord = await getCoord(destination);
-      // TODO: 출발지/목적지 좌표 state로 할 수 있는게...
-      setStartPos(startingCoord);
-      setDestPos(destinationCoord);
-      // TODO: 같은 array 동치 비교 왜 안 될까?
-      if (startingCoord.toString() === noPos.toString()) {
-        alert('출발지를 다시 입력해주세요.');
-        startingRef.current.focus();
-      } else if (destinationCoord.toString() === noPos.toString()) {
-        alert('목적지를 다시 입력해주세요.');
-        destinationRef.current.focus();
-      } else {
-        const routeCenterCoord = getRouteCenterCoord(startingCoord, destinationCoord);
-        const directRouteDistance = getDirectRouteDistance(startingCoord, destinationCoord);
-        console.log(`출발지 좌표: ${startingCoord}`);
-        console.log(`목적지 좌표: ${destinationCoord}`);
-        console.log(`경로 중심 좌표: ${routeCenterCoord}`);
-        console.log(`경로 직선 거리: ${directRouteDistance}`);
-        setRouteCenterPos(routeCenterCoord);
-        setDirectRouteDistance(directRouteDistance);
-      }
+      return false;
     }
+    if (destination.trim() === '') {
+      alert('목적지를 다시 입력해주세요.');
+      setValue('destination', destination.trim());
+      destinationRef.current.focus();
+      return false;
+    }
+    return true;
+  };
+
+  const validateCoord = (startingCoord, destinationCoord) => {
+    if (Object.is(startingCoord, noCoord)) {
+      alert('출발지 좌표를 찾을 수 없습니다.');
+      startingRef.current.focus();
+      return false;
+    }
+    if (Object.is(destinationCoord, noCoord)) {
+      alert('목적지 좌표를 찾을 수 없습니다.');
+      destinationRef.current.focus();
+      return false;
+    }
+    return true;
+  };
+
+  const onSearch = async ({ starting, destination }) => {
+    const isFormOK = validateForm(starting, destination);
+    if (!isFormOK) {
+      return;
+    }
+    const startingCoord = await getCoord(starting);
+    const destinationCoord = await getCoord(destination);
+    const isCoordOK = validateCoord(startingCoord, destinationCoord);
+    if (!isCoordOK) {
+      return;
+    }
+    const routeCenterCoord = getRouteCenterCoord(startingCoord, destinationCoord);
+    const directRouteDistance = getDirectRouteDistance(startingCoord, destinationCoord);
+    setStartCoord(startingCoord);
+    setDestCoord(destinationCoord);
+    setRouteCenterCoord(routeCenterCoord);
+    setDirectRouteDistance(directRouteDistance);
   };
 
   // fetch initialData from ddareung api
@@ -144,48 +204,53 @@ function App() {
     fetchLiveData();
   }, []);
 
-  // if currentPos changes, set starting with reverse geocoded address
+  // if currentCoord changes, set starting with reverse geocoded address
   useEffect(() => {
-    async function setStartingWithCurrentPos() {
-      if (currentPos !== defaultPos) {
-        const address = await getAddress(currentPos);
-        startingRef.current.value = address;
-        startingRef.current.focus();
+    async function setStartingWithCurrentPosAddress() {
+      if (!Object.is(currentCoord, defaultCoord)) {
+        const address = await getAddress(currentCoord);
+        setValue('starting', address);
+        destinationRef.current.focus();
       }
     }
-    setStartingWithCurrentPos();
-  }, [currentPos]);
+    setStartingWithCurrentPosAddress();
+  }, [currentCoord]);
 
   return (
-    <div>
-      <div className="searchBox">
-        <button className="currentPosBtn" onClick={handleCurrentPositionClick} disabled={loadingCurrentPos}>
-          {loadingCurrentPos ? '가져오는 중...' : '현재 위치 가져오기'}
+    <div className="wrapper">
+      <form className="searchBox" onSubmit={handleSubmit(onSearch)}>
+        <button className="currentPosBtn" type="button" disabled={loadingCurrentPos}>
+          <img src={CurrentPositionIcon} alt="CurrentPositionIcon" onClick={onCurrentPosClick} />
         </button>
-        <form className="searchForm" onSubmit={handleSubmit(onSubmit)}>
-          <input
-            className="starting"
-            name="starting"
-            placeholder="출발지를 입력해주세요..."
-            ref={e => {
-              startingHookRef(e);
-              startingRef.current = e;
-            }}
-            {...startingRest}
-          />
-          <input
-            className="destination"
-            name="destination"
-            placeholder="목적지를 입력해주세요..."
-            ref={e => {
-              destinationHookRef(e);
-              destinationRef.current = e;
-            }}
-            {...destinationRest}
-          />
-          <button type="submit">찾기</button>
-        </form>
-      </div>
+        <input
+          className="addressInput"
+          name="starting"
+          placeholder="출발지"
+          ref={e => {
+            startingHookRef(e);
+            startingRef.current = e;
+          }}
+          {...startingRest}
+          style={errors.starting && { borderBottomColor: 'red' }}
+        />
+        <button className="swapBtn" type="button">
+          <img src={SwapIcon} alt="SwapIcon" onClick={swapAddress} />
+        </button>
+        <input
+          className="addressInput"
+          name="destination"
+          placeholder="목적지"
+          ref={e => {
+            destinationHookRef(e);
+            destinationRef.current = e;
+          }}
+          {...destinationRest}
+          style={errors.destination && { borderBottomColor: 'red' }}
+        />
+        <button className="searchBtn">
+          <img src={SearchIcon} alt="SearchIcon" />
+        </button>
+      </form>
       <RenderAfterNavermapsLoaded
         ncpClientId={process.env.REACT_APP_NCP_CLIENT_ID}
         error={<p>Maps Load Error</p>}
@@ -193,10 +258,11 @@ function App() {
       >
         <NaverMapWithMarkers
           liveData={liveData}
-          currentPos={currentPos}
-          routeCenterPos={routeCenterPos}
+          currentCoord={currentCoord}
+          startCoord={startCoord}
+          destCoord={destCoord}
+          routeCenterCoord={routeCenterCoord}
           directRouteDistance={directRouteDistance}
-          setLoadingCurrentPos={setLoadingCurrentPos}
         />
       </RenderAfterNavermapsLoaded>
     </div>
