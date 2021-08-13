@@ -8,9 +8,9 @@ import SwapIcon from './img/ic_swap_horiz_48px.svg';
 import SearchIcon from './img/ic_search_48px.svg';
 import StartIcon from './img/ic_android_48px.svg';
 import DestIcon from './img/ic_golf_course_48px.svg';
-import GreenStop from './img/greenStop.png';
-import OrangeStop from './img/orangeStop.png';
-import GrayStop from './img/grayStop.png';
+import GreenStopIcon from './img/greenStop.svg';
+import OrangeStopIcon from './img/orangeStop.svg';
+import GrayStopIcon from './img/grayStop.svg';
 
 const defaultCoord = { lng: 126.988205, lat: 37.551229 };
 const noCoord = { lng: -1, lat: -1 };
@@ -35,7 +35,7 @@ function NaverMapWithMarkers({ liveData, currentCoord, startCoord, destCoord, ro
         lng: currentCoord.lng,
         lat: currentCoord.lat,
       },
-      zoom: 16,
+      zoom: 15,
     });
   }, [currentCoord]);
 
@@ -52,7 +52,7 @@ function NaverMapWithMarkers({ liveData, currentCoord, startCoord, destCoord, ro
     }
   }, [routeCenterCoord]);
 
-  const whichIcon = count => (count === 0 ? GrayStop : count < 5 ? OrangeStop : GreenStop);
+  const whichIcon = count => (count === 0 ? GrayStopIcon : count < 5 ? OrangeStopIcon : GreenStopIcon);
 
   const onStopClick = (stationName, parkingBikeTotCnt) => {
     setInfo(`${stationName} / ${parkingBikeTotCnt}대 남음`);
