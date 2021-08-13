@@ -115,12 +115,22 @@ function App() {
   const { ref: startingHookRef, ...startingRest } = register('starting', { required: '출발지를 입력해주세요.' });
   const { ref: destinationHookRef, ...destinationRest } = register('destination', { required: '목적지를 입력해주세요.' });
 
+  // if currentCoord changes, set starting with reverse geocoded address
+  const setStartingWithCurrentPosAddress = async coord => {
+    if (!Object.is(coord, defaultCoord)) {
+      const address = await getAddress(coord);
+      setValue('starting', address);
+      destinationRef.current.focus();
+    }
+  };
+
   const onCurrentPosClick = () => {
     setLoadingCurrentPos(true);
     navigator.geolocation.getCurrentPosition(
       position => {
         const coord = { lng: Number(position.coords.longitude), lat: Number(position.coords.latitude) };
         setCurrentCoord(coord);
+        setStartingWithCurrentPosAddress(coord);
         setStartCoord(coord);
         setLoadingCurrentPos(false);
       },
@@ -203,18 +213,6 @@ function App() {
     }
     fetchLiveData();
   }, []);
-
-  // if currentCoord changes, set starting with reverse geocoded address
-  useEffect(() => {
-    async function setStartingWithCurrentPosAddress() {
-      if (!Object.is(currentCoord, defaultCoord)) {
-        const address = await getAddress(currentCoord);
-        setValue('starting', address);
-        destinationRef.current.focus();
-      }
-    }
-    setStartingWithCurrentPosAddress();
-  }, [currentCoord]);
 
   return (
     <div className="wrapper">
