@@ -8,9 +8,9 @@ import SwapIcon from './img/ic_swap_horiz_48px.svg';
 import SearchIcon from './img/ic_search_48px.svg';
 import StartIcon from './img/ic_android_48px.svg';
 import DestIcon from './img/ic_golf_course_48px.svg';
-import StopIcon from './img/ic_directions_bike_24px.svg';
-import StopLittleBitIcon from './img/alert-triangle.svg';
-import StopNotAvailableIcon from './img/ic_not_interested_24px.svg';
+import GreenStop from './img/greenStop.png';
+import OrangeStop from './img/orangeStop.png';
+import GrayStop from './img/grayStop.png';
 
 const defaultCoord = { lng: 126.988205, lat: 37.551229 };
 const noCoord = { lng: -1, lat: -1 };
@@ -52,7 +52,7 @@ function NaverMapWithMarkers({ liveData, currentCoord, startCoord, destCoord, ro
     }
   }, [routeCenterCoord]);
 
-  const whichIcon = count => (count === 0 ? StopNotAvailableIcon : count < 3 ? StopLittleBitIcon : StopIcon);
+  const whichIcon = count => (count === 0 ? GrayStop : count < 5 ? OrangeStop : GreenStop);
 
   const onStopClick = (stationName, parkingBikeTotCnt) => {
     setInfo(`${stationName} / ${parkingBikeTotCnt}대 남음`);
