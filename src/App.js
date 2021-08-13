@@ -27,7 +27,6 @@ function NaverMapWithMarkers({ liveData, currentCoord, startCoord, destCoord, ro
   });
 
   const infoRef = useRef();
-  const tsRef = useRef();
 
   useEffect(() => {
     setMapOptions({
@@ -54,15 +53,17 @@ function NaverMapWithMarkers({ liveData, currentCoord, startCoord, destCoord, ro
 
   const whichIcon = count => (count === 0 ? GrayStopIcon : count < 5 ? OrangeStopIcon : GreenStopIcon);
 
-  const onStopClick = (stationName, parkingBikeTotCnt) => {
-    setInfo(`${stationName} / ${parkingBikeTotCnt}대 남음`);
+  const onStopClick = (name, bike) => {
     if (infoRef.current.classList.contains('show')) {
-      clearTimeout(tsRef.current);
+      if (info === `${name} / ${bike}대 남음`) {
+        infoRef.current.classList.remove('show');
+      } else {
+        setInfo(`${name} / ${bike}대 남음`);
+      }
+    } else {
+      setInfo(`${name} / ${bike}대 남음`);
+      infoRef.current.classList.add('show');
     }
-    infoRef.current.classList.add('show');
-    tsRef.current = setTimeout(() => {
-      infoRef.current.classList.remove('show');
-    }, 3000);
   };
 
   return (
@@ -70,14 +71,14 @@ function NaverMapWithMarkers({ liveData, currentCoord, startCoord, destCoord, ro
       <NaverMap id="map" {...mapOptions}>
         {liveData.length !== 0 &&
           liveData.map(stop => {
-            const { stationId, stationName, parkingBikeTotCnt, stationLatitude: lat, stationLongitude: lng } = stop;
+            const { stationId: id, stationName: name, parkingBikeTotCnt: bike, stationLatitude: lat, stationLongitude: lng } = stop;
             return (
               <Marker
-                key={stationId}
+                key={id}
                 position={new navermaps.LatLng(lat, lng)}
-                icon={whichIcon(Number(parkingBikeTotCnt))}
+                icon={whichIcon(Number(bike))}
                 onClick={() => {
-                  onStopClick(stationName, parkingBikeTotCnt);
+                  onStopClick(name, bike);
                 }}
               />
             );
